@@ -1,0 +1,35 @@
+{
+  "rootFolder": ".",
+  "engine": "thumbnailator",
+  "engineComment": "You can use following options for engine: thumbnailator, imgscalr",
+  "inputs": [
+    "portrait.jpg", "landscape.jpg"
+  ],
+  "outputs": [
+    {
+      "path": "output/128x400.png",
+      "input": "auto-select",
+      "function": "scaleAndCrop",
+      "width": 128,
+      "height": 400,
+      "quality": 0.8
+    },
+    {
+      "path": "output/1000x400.jpg",
+      "width": 1000,
+      "height": 400
+    },
+    {
+      "path": "output/2/200x400.jpg",
+      "input": "landscape.jpg",
+      "width": 200,
+      "height": 400
+    }
+  ],
+  "outputComments": [
+    "path, width and height are mandatory fields.",
+    "input is not mandatory. 'auto-select' keyword selects best input image based on the aspect ratio",
+    "function is not working in this version. and it is not mandatory. default is scaleAndCrop.",
+    "quality is not mandatory and works only for lossy formats (like jpg). just for thumbnailator engine."
+  ]
+}
