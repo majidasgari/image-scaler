@@ -13,13 +13,13 @@ import javax.imageio.ImageIO
 import kotlin.math.abs
 import kotlin.system.exitProcess
 
+data class InputFile(val path: Path, val dimension: ImageDimension)
+
 fun main() {
     //TODO: You ca remove following line. It copy the default config file in the working directory
     ResourceFileCopier.copy("config.json")
     val config = TextFileReader.readJSON("config.json", Configuration::class.java)!!
     val rootPath = config.rootFolder.toPath()
-
-    data class InputFile(val path: Path, val dimension: ImageDimension)
 
     val inputFiles = mutableMapOf<String, InputFile>()
     for (filename in config.inputs) {
@@ -36,48 +36,53 @@ fun main() {
     }
 
     for (it in config.outputs) {
-        val aspectRatioDst = it.width.toDouble() / it.height
-        println("convert output ${it.input} for ${it.width}x${it.height}.")
-        val inputImage = if (it.input == null || it.input == OutputProfile.AUTO_SELECT) {
-            val bestFiles = arrayOf<InputFile?>(null, null) // best portrait, best landscape
-            inputFiles.forEach { key, value ->
-                val i = if (value.dimension.portrait) 0 else 1
-                if (bestFiles[i] == null ||
-                        abs(bestFiles[i]!!.dimension.aspectRatio - aspectRatioDst) <
-                        abs(value.dimension.aspectRatio - aspectRatioDst))
-                    bestFiles[i] = value
-            }
-            val portrait = it.width < it.height
-            if (portrait && bestFiles[0] != null) bestFiles[0]
-            else if (!portrait && bestFiles[1] != null) bestFiles[1]
-            else if (bestFiles[0] != null) bestFiles[0]
-            else bestFiles[1]
-        } else inputFiles[it.input]
-        print("source image is ${inputImage?.path}")
-        println(inputImage!!)
-        val outputPath = it.path.toPath(rootPath)
-        Files.createDirectories(outputPath.parent)
-        println("write output $outputPath for ${it.width}x${it.height}.")
+        handleProfile(config, rootPath, inputFiles, it, it.path)
+    }
+}
 
-        if (config.engine == ScaleEngine.thumbnailator) {
-            val builder = Thumbnails.of(inputImage.path.toFile())
-            builder.crop(Positions.CENTER).size(it.width, it.height)
-            if (it.quality != null) builder.outputQuality(it.quality!!)
-            builder.toFile(outputPath.toFile())
+fun handleProfile(config: Configuration, rootPath: Path, inputFiles: Map<String, InputFile>,
+                  it: OutputProfile, path: String) {
+    val aspectRatioDst = it.width.toDouble() / it.height
+    println("convert output ${it.input} for ${it.width}x${it.height}.")
+    val inputImage = if (it.input == null || it.input == OutputProfile.AUTO_SELECT) {
+        val bestFiles = arrayOf<InputFile?>(null, null) // best portrait, best landscape
+        for ((_, value) in inputFiles) {
+            val i = if (value.dimension.portrait) 0 else 1
+            if (bestFiles[i] == null ||
+                    abs(bestFiles[i]!!.dimension.aspectRatio - aspectRatioDst) >
+                    abs(value.dimension.aspectRatio - aspectRatioDst))
+                bestFiles[i] = value
+        }
+        val portrait = it.width < it.height
+        if (portrait && bestFiles[0] != null) bestFiles[0]
+        else if (!portrait && bestFiles[1] != null) bestFiles[1]
+        else if (bestFiles[0] != null) bestFiles[0]
+        else bestFiles[1]
+    } else inputFiles[it.input]
+    print("source image is ${inputImage?.path}")
+    println(inputImage!!)
+    val outputPath = path.toPath(rootPath)
+    Files.createDirectories(outputPath.parent)
+    println("write output $outputPath for ${it.width}x${it.height}.")
+
+    if (config.engine == ScaleEngine.thumbnailator) {
+        val builder = Thumbnails.of(inputImage.path.toFile())
+        builder.crop(Positions.CENTER).size(it.width, it.height)
+        if (it.quality != null) builder.outputQuality(it.quality!!)
+        builder.toFile(outputPath.toFile())
+    } else {
+        if (aspectRatioDst > inputImage.dimension.aspectRatio) {
+            val nsH = inputImage.dimension.height * it.width / inputImage.dimension.width
+            ImageIO.write(Scalr.crop(
+                    Scalr.resize(ImageIO.read(inputImage.path.toFile()), Scalr.Mode.AUTOMATIC, it.width, nsH),
+                    0, abs(nsH - it.height) / 2, it.width, it.height),
+                    outputPath.fileName.toString().substringAfterLast('.'), outputPath.toFile())
         } else {
-            if (aspectRatioDst > inputImage.dimension.aspectRatio) {
-                val nsH = inputImage.dimension.height * it.width / inputImage.dimension.width
-                ImageIO.write(Scalr.crop(
-                        Scalr.resize(ImageIO.read(inputImage.path.toFile()), Scalr.Mode.AUTOMATIC, it.width, nsH),
-                        0, abs(nsH - it.height) / 2, it.width, it.height),
-                        outputPath.fileName.toString().substringAfterLast('.'), outputPath.toFile())
-            } else {
-                val nsW = inputImage.dimension.width * it.height / inputImage.dimension.height
-                ImageIO.write(Scalr.crop(
-                        Scalr.resize(ImageIO.read(inputImage.path.toFile()), Scalr.Mode.AUTOMATIC, nsW, it.height),
-                        abs(nsW - it.width) / 2, 0, it.width, it.height),
-                        outputPath.fileName.toString().substringAfterLast('.'), outputPath.toFile())
-            }
+            val nsW = inputImage.dimension.width * it.height / inputImage.dimension.height
+            ImageIO.write(Scalr.crop(
+                    Scalr.resize(ImageIO.read(inputImage.path.toFile()), Scalr.Mode.AUTOMATIC, nsW, it.height),
+                    abs(nsW - it.width) / 2, 0, it.width, it.height),
+                    outputPath.fileName.toString().substringAfterLast('.'), outputPath.toFile())
         }
     }
 }

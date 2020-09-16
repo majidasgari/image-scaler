@@ -5,6 +5,12 @@
   "inputs": [
     "portrait.jpg", "landscape.jpg"
   ],
+  "outputComments": [
+    "path, width and height are mandatory fields.",
+    "input is not mandatory. 'auto-select' keyword selects best input image based on the aspect ratio",
+    "function is not working in this version. and it is not mandatory. default is scaleAndCrop.",
+    "quality is not mandatory and works only for lossy formats (like jpg). just for thumbnailator engine."
+  ],
   "outputs": [
     {
       "path": "output/128x400.png",
@@ -26,10 +32,13 @@
       "height": 400
     }
   ],
-  "outputComments": [
-    "path, width and height are mandatory fields.",
-    "input is not mandatory. 'auto-select' keyword selects best input image based on the aspect ratio",
-    "function is not working in this version. and it is not mandatory. default is scaleAndCrop.",
-    "quality is not mandatory and works only for lossy formats (like jpg). just for thumbnailator engine."
+  "todo": [
+    {
+      "path": "output/$w-$hx$m.jpg",
+      "input": "landscape.jpg",
+      "widths": [200, 300, 500],
+      "heights": [200, 300, 500],
+      "multipliers": [1, 2, 3]
+    }
   ]
 }
